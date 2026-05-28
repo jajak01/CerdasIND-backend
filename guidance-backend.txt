@@ -1,0 +1,400 @@
+PENJELASAN API (DTO, Entities, Mapping)
+Tentu, mari kita jabarkan setiap API dengan penjelasan "Proses Backend (Logika Golang)" yang sangat detail seperti sebelumnya. Penjelasan ini akan menjadi "buku panduan" atau blueprint saat Anda mulai menulis kode Golang nantinya, terutama untuk menangani logika perhitungan nilai yang baru.
+1. Kelompok Otentikasi (Akses Publik / Tanpa Login)
+POST /api/v1/auth/login
+•	Fungsi: Pintu masuk utama bagi peserta maupun admin.
+•	Proses Backend (Golang):
+1.	Golang menerima email dan password dari frontend Vite.
+2.	Mencari data user di tabel users berdasarkan email. Jika tidak ada, kembalikan error "Email tidak ditemukan".
+3.	Menggunakan library bcrypt untuk membandingkan password inputan dengan password_hash di database.
+4.	Jika cocok, Golang membuat Token JWT. Di dalam payload token tersebut, Golang menyisipkan user_id dan role (peserta/admin).
+5.	Token dikirim ke frontend untuk disimpan di localStorage.
+POST /api/v1/auth/register
+•	Fungsi: Pendaftaran akun peserta baru.
+•	Proses Backend (Golang):
+1.	Mengecek tabel users apakah email yang diinput sudah terdaftar.
+2.	Jika aman, lakukan proses hashing pada password menggunakan bcrypt.
+3.	Lakukan INSERT ke tabel users. Secara default (mengikuti skema SQL), role akan otomatis diisi sebagai 'peserta'.
+2. Kelompok Peserta (Proteksi: Token JWT Valid)
+GET /api/v1/jenjang
+•	Fungsi: Menampilkan pilihan SD, SMP, SMA di halaman awal.
+•	Proses Backend: Kueri sederhana SELECT * FROM jenjang.
+GET /api/v1/jenjang/:id/mapel
+•	Fungsi: Menampilkan mata pelajaran setelah peserta memilih jenjang.
+•	Proses Backend: SELECT * FROM mapel WHERE jenjang_id = ?.
+GET /api/v1/mapel/:id/bundles
+•	Fungsi: Menampilkan daftar paket soal (misal: Tryout 1, Latihan Bab 2).
+•	Proses Backend: SELECT * FROM bundles WHERE mapel_id = ? AND is_active = true. (Hanya tampilkan paket yang diaktifkan oleh admin).
+GET /api/v1/bundles/:id/soal
+•	Fungsi: Merender soal ujian ke layar peserta.
+•	Proses Backend (Logika Penting!):
+1.	Ambil data soal SELECT id, tipe_soal, teks_soal, pilihan_jawaban, bobot_nilai FROM soal WHERE bundle_id = ?.
+2.	Peringatan Keamanan: Pastikan kueri ini TIDAK mengambil kolom kunci_jawaban dan pembahasan agar tidak bocor ke frontend.
+3.	Golang melakukan INSERT ke tabel history_ujian untuk mencatat waktu_mulai.
+POST /api/v1/bundles/:id/submit
+•	Fungsi: Menerima lembar jawaban dan melakukan koreksi otomatis (Auto-Grade).
+•	Proses Backend (Logika Penting!):
+1.	Golang melooping (iterate) setiap jawaban yang dikirim peserta.
+2.	Cek Tipe Soal: Golang mencocokkan dengan data asli di database.
+	Jika tipe_soal == pilihan_ganda: Bandingkan jawaban peserta dengan kunci_jawaban. Jika benar, tambahkan nilai berdasarkan kolom bobot_nilai. Tandai is_dinilai: true.
+	Jika tipe_soal == isian_singkat: Jangan dikoreksi! Beri nilai sementara 0, simpan teks ketikan peserta, dan tandai is_dinilai: false.
+3.	Penentuan Status: Jika dalam bundle tersebut murni Pilihan Ganda, ubah status di history_ujian menjadi 'selesai'. Jika ada minimal 1 Isian Singkat, set status menjadi 'menunggu_koreksi'.
+GET /api/v1/users/history
+•	Fungsi: Menampilkan rapor/riwayat ujian peserta.
+•	Proses Backend: 1. Ambil user_id dari Token JWT (bukan dari URL, agar siswa tidak bisa mengintip history siswa lain).
+2. Lakukan SELECT ke tabel history_ujian. Kirimkan skor beserta statusnya (agar frontend tahu jika skor tersebut masih "menggantung" karena menunggu koreksi).
+GET /api/v1/bundles/:id/review
+•	Fungsi: Menampilkan kunci jawaban dan pembahasan lengkap setelah ujian selesai.
+•	Proses Backend: 1. Cek tabel history_ujian untuk siswa tersebut.
+2. Jika status masih 'menunggu_koreksi', tolak akses dengan status HTTP 403.
+3. Jika status 'selesai', kueri SELECT * FROM soal WHERE bundle_id = ? (kali ini termasuk kolom kunci dan pembahasan) dan kirim ke frontend.
+3. Kelompok Admin (Proteksi: Token JWT Valid & Role = 'admin')
+GET /api/v1/admin/bundles
+•	Fungsi: Menampilkan dasbor semua paket ujian.
+•	Proses Backend: Mengambil seluruh data di tabel bundles (termasuk yang is_active = false agar admin bisa mengelola/mengeditnya).
+POST /api/v1/admin/bundles/upload
+•	Fungsi: Membuat bundle baru dan menginput ribuan soal via Excel.
+•	Proses Backend (Logika Penting!):
+1.	Golang membaca file .xlsx dari RAM menggunakan library excelize.
+2.	Membuat data baru di tabel bundles dan mendapatkan bundle_id baru.
+3.	Golang membaca baris demi baris di Excel. Teks rumus matematika (LaTeX) dibaca sebagai string biasa. Pilihan A,B,C,D digabungkan menjadi format JSON.
+4.	Lakukan Bulk Insert (memasukkan banyak baris sekaligus) ke tabel soal.
+GET /api/v1/admin/bundles/:id/export
+•	Fungsi: Admin mendownload soal yang sudah ada untuk diedit ulang.
+•	Proses Backend: 1. Ambil semua soal berdasarkan bundle_id.
+2. Gunakan excelize untuk menulis ke file Excel kosong di memori. Penting: Golang harus mengisi kolom pertama di Excel dengan ID Soal dari database.
+3. Kirim file tersebut sebagai respons download ke browser admin.
+PUT /api/v1/admin/bundles/:id/update
+•	Fungsi: Admin mengupload Excel yang sudah mereka revisi.
+•	Proses Backend (Logika Penting!):
+1.	Golang membaca baris Excel.
+2.	Cek kolom ID Soal. Jika ada isinya (misal ID 105), jalankan kueri UPDATE soal SET ... WHERE id = 105.
+3.	Jika baris tersebut kolom ID Soal-nya kosong (berarti admin mengetik soal baru di baris bawah), jalankan kueri INSERT ke tabel soal.
+GET /api/v1/admin/submissions
+•	Fungsi: Admin melihat daftar pekerjaan siswa, terutama yang butuh koreksi manual.
+•	Proses Backend: Menerima kueri parameter dari Vite (misal ?status=menunggu_koreksi). Golang melakukan filter pada tabel history_ujian dan mengembalikan daftar nama siswa yang harus dinilai.
+GET /api/v1/admin/submissions/:history_id
+•	Fungsi: Admin membuka lembar jawaban isian singkat milik satu siswa.
+•	Proses Backend: Mengambil data JSON detail_jawaban dari tabel history_ujian. Frontend akan melakukan filter dan hanya menampilkan soal yang bertanda is_dinilai: false.
+PUT /api/v1/admin/submissions/:history_id/grade
+•	Fungsi: Admin menyimpan nilai untuk soal isian singkat tersebut.
+•	Proses Backend (Logika Penting!):
+1.	Menerima nilai yang diketik Admin (misal: soal 102 diberi nilai 8, soal 105 diberi nilai 10).
+2.	Golang membuka JSON detail_jawaban milik siswa tersebut, mencari ID soalnya, lalu mengupdate skor_didapat dengan nilai dari Admin, dan mengubah is_dinilai menjadi true.
+3.	Golang menjumlahkan ulang semua skor_didapat (baik PG maupun Isian Singkat) untuk mendapatkan total skor_akhir yang baru.
+4.	Update tabel history_ujian: simpan skor_akhir baru dan ubah status menjadi 'selesai'.
+
+
+
+DOKUMENTASII API
+Berikut adalah dokumentasi API lengkap dan terbaru untuk sistem aplikasi ujian Anda, yang sudah merangkum seluruh pembaruan logika (termasuk auto-grade dan koreksi manual).
+Dokumentasi ini siap Anda jadikan acuan utama saat menulis kode di Golang dan mengintegrasikannya ke Vite.
+Informasi Global
+•	Base URL: http://localhost:8080/api/v1 (sesuaikan port saat production)
+•	Format Data Utama: application/json
+•	Otentikasi: Menggunakan Bearer Token (JWT). Sisipkan header berikut pada setiap request yang diproteksi:
+Authorization: Bearer <token_jwt_anda>
+1. Otentikasi (Akses Publik)
+POST /auth/login
+Memvalidasi kredensial pengguna dan mengembalikan JWT Token.
+•	Request Body (JSON):
+JSON
+{
+  "email": "siswa@email.com",
+  "password": "password123"
+}
+•	Response (200 OK):
+JSON
+{
+  "message": "Login berhasil",
+  "data": {
+    "user_id": 1,
+    "username": "siswa01",
+    "role": "peserta",
+    "token": "eyJhbGciOiJIUz..."
+  }
+}
+POST /auth/register
+Mendaftarkan akun peserta baru secara otomatis dengan role peserta.
+•	Request Body (JSON):
+JSON
+{
+  "username": "siswa01",
+  "email": "siswa@email.com",
+  "password": "password123"
+}
+•	Response (201 Created): Pesan sukses pendaftaran.
+2. Area Peserta (Proteksi: Token JWT Valid)
+Endpoint di bawah ini bisa diakses oleh peserta maupun admin.
+GET /jenjang
+Mengambil daftar jenjang pendidikan.
+•	Response (200 OK):
+JSON
+[
+  { "id": 1, "nama": "SD" },
+  { "id": 2, "nama": "SMP" }
+]
+GET /jenjang/:id/mapel
+Mengambil daftar mata pelajaran berdasarkan ID Jenjang.
+•	Response (200 OK):
+JSON
+[
+  { "id": 1, "jenjang_id": 1, "nama": "Bahasa Indonesia" },
+  { "id": 2, "jenjang_id": 1, "nama": "Matematika" }
+]
+GET /mapel/:id/bundles
+Mengambil daftar paket ujian yang aktif berdasarkan ID Mapel.
+•	Response (200 OK):
+JSON
+[
+  {
+    "id": 1,
+    "nama_bundle": "Tryout UTBK 2026",
+    "waktu_menit": 90
+  }
+]
+GET /bundles/:id/soal
+Mengambil lembar soal (Tanpa kunci jawaban) dan mencatat waktu mulai peserta di database.
+•	Response (200 OK):
+JSON
+[
+  {
+    "id": 101,
+    "tipe_soal": "pilihan_ganda",
+    "teks_soal": "Berapa 1+1?",
+    "pilihan_jawaban": [
+      {"opsi": "A", "teks": "1"},
+      {"opsi": "B", "teks": "2"}
+    ],
+    "bobot_nilai": 10
+  }
+]
+POST /bundles/:id/submit
+Mengirimkan jawaban peserta. Backend otomatis mengoreksi Pilihan Ganda.
+•	Request Body (JSON):
+JSON
+{
+  "jawaban": [
+    {"soal_id": 101, "jawaban_peserta": "B"},
+    {"soal_id": 102, "jawaban_peserta": "Mitokondria"}
+  ]
+}
+•	Response (200 OK): Mengembalikan status 'selesai' (jika hanya PG) atau 'menunggu_koreksi' (jika ada soal isian singkat).
+JSON
+{
+  "message": "Jawaban berhasil disubmit",
+  "status": "menunggu_koreksi",
+  "skor_sementara": 40
+}
+GET /users/history
+Melihat riwayat dan skor ujian peserta yang sedang login.
+•	Response (200 OK):
+JSON
+[
+  {
+    "history_id": 15,
+    "nama_bundle": "Tryout Biologi",
+    "waktu_mulai": "2026-05-28T10:00:00Z",
+    "skor_akhir": 85.50,
+    "status": "selesai"
+  }
+]
+GET /bundles/:id/review
+Menampilkan kunci jawaban dan pembahasan LENGKAP. Hanya bisa diakses jika status ujian peserta di tabel history sudah 'selesai'.
+•	Response (200 OK): Array soal lengkap beserta kunci_jawaban dan pembahasan. (Tolak dengan 403 Forbidden jika status masih 'menunggu_koreksi').
+3. Area Admin (Proteksi: Token JWT Valid & Role = admin)
+GET /admin/bundles
+Mengambil semua daftar bundle (termasuk yang tidak aktif) untuk dasbor manajemen.
+•	Response (200 OK): Array data bundles beserta metadata (siapa pembuatnya, tanggal dibuat).
+POST /admin/bundles/upload
+Mengunggah file Excel baru untuk membuat bundle sekaligus memasukkan ribuan soal.
+•	Request Type: multipart/form-data
+o	file: (File .xlsx)
+o	mapel_id: (Integer)
+o	nama_bundle: (String)
+o	waktu_menit: (Integer)
+•	Response (201 Created):
+JSON
+{ "message": "Bundle berhasil dibuat. 50 soal berhasil di-insert." }
+GET /admin/bundles/:id/export
+Mendownload soal dari database ke dalam bentuk Excel (.xlsx).
+•	Response: File stream (Mime Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet).
+PUT /admin/bundles/:id/update
+Mengunggah kembali file Excel yang telah dimodifikasi (menambah, mengubah, atau menghapus baris soal).
+•	Request Type: multipart/form-data
+o	file: (File .xlsx)
+•	Response (200 OK):
+JSON
+{ "message": "Update berhasil. 10 diubah, 2 ditambah, 0 dihapus." }
+GET /admin/submissions
+Mengambil daftar pekerjaan siswa yang perlu dikoreksi admin.
+•	Query Params: ?status=menunggu_koreksi
+•	Response (200 OK):
+JSON
+[
+  {
+    "history_id": 15,
+    "username": "siswa01",
+    "nama_bundle": "Tryout Biologi",
+    "status": "menunggu_koreksi",
+    "tanggal_submit": "2026-05-28T10:45:00Z"
+  }
+]
+GET /admin/submissions/:history_id
+Melihat detail ketikan jawaban isian singkat peserta untuk proses penilaian.
+•	Response (200 OK):
+JSON
+{
+  "history_id": 15,
+  "username": "siswa01",
+  "detail_jawaban": [
+    {
+      "soal_id": 102,
+      "teks_soal": "Pusat pernapasan sel adalah?",
+      "jawaban_peserta": "Mitokondia",
+      "skor_didapat": 0,
+      "is_dinilai": false
+    }
+  ]
+}
+PUT /admin/submissions/:history_id/grade
+Menyimpan nilai dari admin untuk soal isian singkat dan mengubah status ujian menjadi selesai.
+•	Request Body (JSON):
+JSON
+{
+  "penilaian_manual": [
+    { "soal_id": 102, "skor_diberikan": 10 }
+  ]
+}
+•	Response (200 OK):
+JSON
+{
+  "message": "Penilaian berhasil. Status ujian selesai.",
+  "total_skor_baru": 95
+}
+
+
+
+MIGRASI SQL
+-- ====================================================================
+-- 1. MEMBUAT TIPE DATA CUSTOM (ENUM)
+-- ====================================================================
+CREATE TYPE user_role AS ENUM ('admin', 'peserta');
+CREATE TYPE jenis_soal AS ENUM ('pilihan_ganda', 'isian_singkat');
+CREATE TYPE status_ujian AS ENUM ('berlangsung', 'menunggu_koreksi', 'selesai');
+
+-- ====================================================================
+-- 2. MEMBUAT TABEL UTAMA & RELASI
+-- ====================================================================
+
+-- Tabel Users (Menampung Admin & Peserta dalam satu pintu login)
+CREATE TABLE users (
+    id BIGSERIAL PRIMARY KEY,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    email VARCHAR(100) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    role user_role DEFAULT 'peserta' NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Tabel Jenjang (Kategori Utama: SD, SMP, SMA)
+CREATE TABLE jenjang (
+    id SERIAL PRIMARY KEY,
+    nama VARCHAR(10) UNIQUE NOT NULL
+);
+
+-- Tabel Mata Pelajaran (Berelasi dengan Jenjang, e.g., Matematika di SMA)
+CREATE TABLE mapel (
+    id SERIAL PRIMARY KEY,
+    jenjang_id INT NOT NULL REFERENCES jenjang(id) ON DELETE CASCADE,
+    nama VARCHAR(50) NOT NULL,
+    UNIQUE(jenjang_id, nama) -- Mencegah duplikasi nama mapel di jenjang yang sama
+);
+
+-- Tabel Bundles (Sampul/Paket Ujian yang di-upload via Excel)
+CREATE TABLE bundles (
+    id BIGSERIAL PRIMARY KEY,
+    mapel_id INT NOT NULL REFERENCES mapel(id) ON DELETE CASCADE,
+    nama_bundle VARCHAR(150) NOT NULL,
+    deskripsi TEXT,
+    waktu_menit INT DEFAULT 60 NOT NULL,
+    is_active BOOLEAN DEFAULT false NOT NULL,
+    created_by BIGINT REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Tabel Soal (Menyimpan ribuan isi pertanyaan dari Excel)
+CREATE TABLE soal (
+    id BIGSERIAL PRIMARY KEY,
+    bundle_id BIGINT NOT NULL REFERENCES bundles(id) ON DELETE CASCADE,
+    tipe_soal jenis_soal NOT NULL DEFAULT 'pilihan_ganda',
+    teks_soal TEXT NOT NULL,
+    pilihan_jawaban JSONB, -- Berisi array pilihan A, B, C, D jika PG. NULL jika Isian.
+    kunci_jawaban TEXT NOT NULL,
+    pembahasan TEXT,
+    bobot_nilai INT DEFAULT 1 NOT NULL, -- Poin maksimal jika soal ini benar
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Tabel History Ujian (Lembar kerja dan rekam jejak nilai siswa)
+CREATE TABLE history_ujian (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    bundle_id BIGINT NOT NULL REFERENCES bundles(id) ON DELETE CASCADE,
+    waktu_mulai TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    waktu_selesai TIMESTAMP,
+    skor_akhir NUMERIC(5,2) DEFAULT 0.00, -- Nilai total (bisa desimal, e.g., 87.50)
+    detail_jawaban JSONB, -- Menyimpan histori jawaban siswa per nomor soal
+    status status_ujian DEFAULT 'berlangsung' NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ====================================================================
+-- 3. MEMBUAT DATABASE INDEX (Untuk Optimasi Performa Kecepatan API)
+-- ====================================================================
+CREATE INDEX idx_mapel_jenjang ON mapel(jenjang_id);
+CREATE INDEX idx_bundles_mapel ON bundles(mapel_id);
+CREATE INDEX idx_soal_bundle ON soal(bundle_id);
+CREATE INDEX idx_history_user ON history_ujian(user_id);
+CREATE INDEX idx_history_bundle ON history_ujian(bundle_id);
+CREATE INDEX idx_history_status ON history_ujian(status);
+
+DATA AWAL ESENSI
+-- Insert Kategori Jenjang
+INSERT INTO jenjang (nama) VALUES ('SD'), ('SMP'), ('SMA');
+
+-- Insert Mata Pelajaran SD (Terikat ke jenjang_id = 1)
+INSERT INTO mapel (jenjang_id, nama) VALUES 
+(1, 'Bahasa Indonesia'), 
+(1, 'Bahasa Inggris'), 
+(1, 'Matematika'), 
+(1, 'IPA');
+
+-- Insert Mata Pelajaran SMP (Terikat ke jenjang_id = 2)
+INSERT INTO mapel (jenjang_id, nama) VALUES 
+(2, 'Bahasa Indonesia'), 
+(2, 'Bahasa Inggris'), 
+(2, 'Matematika'), 
+(2, 'IPA');
+
+-- Insert Mata Pelajaran SMA (Terikat ke jenjang_id = 3)
+INSERT INTO mapel (jenjang_id, nama) VALUES 
+(3, 'Bahasa Indonesia'), 
+(3, 'Bahasa Inggris'), 
+(3, 'Matematika'), 
+(3, 'Biologi'), 
+(3, 'Fisika'), 
+(3, 'Kimia');
+
+Script SQL Migrasi (Down / Rollback)
+DROP TABLE IF EXISTS history_ujian CASCADE;
+DROP TABLE IF EXISTS soal CASCADE;
+DROP TABLE IF EXISTS bundles CASCADE;
+DROP TABLE IF EXISTS mapel CASCADE;
+DROP TABLE IF EXISTS jenjang CASCADE;
+DROP TABLE IF EXISTS users CASCADE;
+
+DROP TYPE IF EXISTS status_ujian;
+DROP TYPE IF EXISTS jenis_soal;
+DROP TYPE IF EXISTS user_role;

@@ -1,0 +1,676 @@
+basePath: /api/v1
+definitions:
+  model.AuthResponse:
+    properties:
+      role:
+        $ref: '#/definitions/model.UserRole'
+      token:
+        type: string
+      user_id:
+        type: integer
+      username:
+        type: string
+    type: object
+  model.Bundle:
+    properties:
+      created_at:
+        type: string
+      created_by:
+        type: integer
+      deskripsi:
+        type: string
+      id:
+        type: integer
+      is_active:
+        type: boolean
+      mapel_id:
+        type: integer
+      nama_bundle:
+        type: string
+      updated_at:
+        type: string
+      waktu_menit:
+        type: integer
+    type: object
+  model.ErrorResponse:
+    properties:
+      message:
+        type: string
+    type: object
+  model.GradeRequest:
+    properties:
+      penilaian_manual:
+        items:
+          $ref: '#/definitions/model.PenilaianManual'
+        type: array
+    type: object
+  model.HistoryResponse:
+    properties:
+      history_id:
+        type: integer
+      nama_bundle:
+        type: string
+      skor_akhir:
+        type: number
+      status:
+        $ref: '#/definitions/model.StatusUjian'
+      waktu_mulai:
+        type: string
+    type: object
+  model.JenisSoal:
+    enum:
+    - pilihan_ganda
+    - isian_singkat
+    type: string
+    x-enum-varnames:
+    - SoalPG
+    - SoalIsianSingkat
+  model.Jenjang:
+    properties:
+      id:
+        type: integer
+      nama:
+        type: string
+    type: object
+  model.LoginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  model.Mapel:
+    properties:
+      id:
+        type: integer
+      jenjang_id:
+        type: integer
+      nama:
+        type: string
+    type: object
+  model.PenilaianManual:
+    properties:
+      skor_diberikan:
+        type: number
+      soal_id:
+        type: integer
+    type: object
+  model.PilihanJawaban:
+    properties:
+      opsi:
+        type: string
+      teks:
+        type: string
+    type: object
+  model.RegisterRequest:
+    properties:
+      email:
+        type: string
+      password:
+        minLength: 6
+        type: string
+      username:
+        type: string
+    required:
+    - email
+    - password
+    - username
+    type: object
+  model.Soal:
+    properties:
+      bobot_nilai:
+        type: integer
+      bundle_id:
+        type: integer
+      created_at:
+        type: string
+      id:
+        type: integer
+      kunci_jawaban:
+        type: string
+      pembahasan:
+        type: string
+      pilihan_jawaban:
+        items:
+          $ref: '#/definitions/model.PilihanJawaban'
+        type: array
+      teks_soal:
+        type: string
+      tipe_soal:
+        $ref: '#/definitions/model.JenisSoal'
+    type: object
+  model.SoalPublic:
+    properties:
+      bobot_nilai:
+        type: integer
+      id:
+        type: integer
+      pilihan_jawaban:
+        items:
+          $ref: '#/definitions/model.PilihanJawaban'
+        type: array
+      teks_soal:
+        type: string
+      tipe_soal:
+        $ref: '#/definitions/model.JenisSoal'
+    type: object
+  model.StatusUjian:
+    enum:
+    - berlangsung
+    - menunggu_koreksi
+    - selesai
+    type: string
+    x-enum-varnames:
+    - StatusBerlangsung
+    - StatusMenungguKoreksi
+    - StatusSelesai
+  model.SubmitJawaban:
+    properties:
+      jawaban_peserta:
+        type: string
+      soal_id:
+        type: integer
+    type: object
+  model.SubmitRequest:
+    properties:
+      jawaban:
+        items:
+          $ref: '#/definitions/model.SubmitJawaban'
+        type: array
+    type: object
+  model.UserRole:
+    enum:
+    - admin
+    - peserta
+    type: string
+    x-enum-varnames:
+    - RoleAdmin
+    - RolePeserta
+  model.WebResponse:
+    properties:
+      data: {}
+      message:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: Backend API for CerdasIND Examination System
+  title: CerdasIND API
+  version: "1.0"
+paths:
+  /admin/bundles:
+    get:
+      description: Retrieve all exam bundles including inactive ones
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.Bundle'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get all bundles (Admin)
+      tags:
+      - admin
+  /admin/bundles/{id}/export:
+    get:
+      description: Download all questions in a bundle as .xlsx file
+      parameters:
+      - description: Bundle ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Export soal to Excel
+      tags:
+      - admin
+  /admin/bundles/{id}/update:
+    put:
+      consumes:
+      - multipart/form-data
+      description: Update existing questions or add new ones via .xlsx upload
+      parameters:
+      - description: Bundle ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Excel File
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.WebResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update soal via Excel
+      tags:
+      - admin
+  /admin/bundles/upload:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Create a new bundle and bulk insert questions from .xlsx file
+      parameters:
+      - description: Excel File
+        in: formData
+        name: file
+        required: true
+        type: file
+      - description: Mapel ID
+        in: formData
+        name: mapel_id
+        required: true
+        type: integer
+      - description: Bundle Name
+        in: formData
+        name: nama_bundle
+        required: true
+        type: string
+      - description: Time in Minutes
+        in: formData
+        name: waktu_menit
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/model.WebResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Upload bundle and soal from Excel
+      tags:
+      - admin
+  /admin/submissions:
+    get:
+      description: Retrieve list of student exam submissions, filtered by status
+      parameters:
+      - description: Status (menunggu_koreksi, selesai)
+        in: query
+        name: status
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get user submissions
+      tags:
+      - admin
+  /admin/submissions/{history_id}:
+    get:
+      description: Retrieve detailed answers of a student submission for grading
+      parameters:
+      - description: History ID
+        in: path
+        name: history_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get submission detail
+      tags:
+      - admin
+  /admin/submissions/{history_id}/grade:
+    put:
+      consumes:
+      - application/json
+      description: Submit manual scores for essay questions and finalize exam
+      parameters:
+      - description: History ID
+        in: path
+        name: history_id
+        required: true
+        type: integer
+      - description: Grade Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.GradeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.WebResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Grade essay questions
+      tags:
+      - admin
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate user and return JWT token
+      parameters:
+      - description: Login Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/model.WebResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.AuthResponse'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      summary: Login user
+      tags:
+      - auth
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Register a new participant account
+      parameters:
+      - description: Register Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/model.WebResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      summary: Register participant
+      tags:
+      - auth
+  /bundles/{id}/review:
+    get:
+      description: Retrieve questions with keys and discussion after exam is finished
+      parameters:
+      - description: Bundle ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.Soal'
+            type: array
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get exam review
+      tags:
+      - participant
+  /bundles/{id}/soal:
+    get:
+      description: Retrieve questions for an exam bundle (hides keys and discussion)
+      parameters:
+      - description: Bundle ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.SoalPublic'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get soal by bundle
+      tags:
+      - participant
+  /bundles/{id}/submit:
+    post:
+      consumes:
+      - application/json
+      description: Submit answers for an exam bundle and get auto-grade result
+      parameters:
+      - description: Bundle ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Submit Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.SubmitRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.WebResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Submit exam answers
+      tags:
+      - participant
+  /jenjang:
+    get:
+      description: Retrieve list of all educational levels (SD, SMP, SMA)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.Jenjang'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get all jenjang
+      tags:
+      - participant
+  /jenjang/{id}/mapel:
+    get:
+      description: Retrieve list of subjects based on jenjang ID
+      parameters:
+      - description: Jenjang ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.Mapel'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get mapel by jenjang
+      tags:
+      - participant
+  /mapel/{id}/bundles:
+    get:
+      description: Retrieve list of active exam bundles based on mapel ID
+      parameters:
+      - description: Mapel ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.Bundle'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get bundles by mapel
+      tags:
+      - participant
+  /users/history:
+    get:
+      description: Retrieve exam history for the logged-in user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.HistoryResponse'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get user history
+      tags:
+      - participant
+securityDefinitions:
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"
