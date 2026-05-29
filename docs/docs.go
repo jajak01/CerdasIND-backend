@@ -479,7 +479,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/model.Soal"
+                                "$ref": "#/definitions/model.ReviewResponse"
                             }
                         }
                     },
@@ -936,20 +936,17 @@ const docTemplate = `{
                 }
             }
         },
-        "model.Soal": {
+        "model.ReviewResponse": {
             "type": "object",
             "properties": {
-                "bobot_nilai": {
-                    "type": "integer"
-                },
-                "bundle_id": {
-                    "type": "integer"
-                },
-                "created_at": {
-                    "type": "string"
-                },
                 "id": {
                     "type": "integer"
+                },
+                "is_benar": {
+                    "type": "boolean"
+                },
+                "jawaban_peserta": {
+                    "type": "string"
                 },
                 "kunci_jawaban": {
                     "type": "string"
@@ -1062,7 +1059,7 @@ const docTemplate = `{
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0",
-	Host:             "localhost:8080",
+	Host:             "",
 	BasePath:         "/api/v1",
 	Schemes:          []string{},
 	Title:            "CerdasIND API",

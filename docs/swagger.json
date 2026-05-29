@@ -6,7 +6,6 @@
         "contact": {},
         "version": "1.0"
     },
-    "host": "localhost:8080",
     "basePath": "/api/v1",
     "paths": {
         "/admin/bundles": {
@@ -473,7 +472,7 @@
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/model.Soal"
+                                "$ref": "#/definitions/model.ReviewResponse"
                             }
                         }
                     },
@@ -930,20 +929,17 @@
                 }
             }
         },
-        "model.Soal": {
+        "model.ReviewResponse": {
             "type": "object",
             "properties": {
-                "bobot_nilai": {
-                    "type": "integer"
-                },
-                "bundle_id": {
-                    "type": "integer"
-                },
-                "created_at": {
-                    "type": "string"
-                },
                 "id": {
                     "type": "integer"
+                },
+                "is_benar": {
+                    "type": "boolean"
+                },
+                "jawaban_peserta": {
+                    "type": "string"
                 },
                 "kunci_jawaban": {
                     "type": "string"
