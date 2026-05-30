@@ -11,6 +11,7 @@ import (
 type AuthService interface {
 	Login(ctx context.Context, req model.LoginRequest) (*model.AuthResponse, error)
 	Register(ctx context.Context, req model.RegisterRequest) error
+	ChangePassword(ctx context.Context, userID int64, req model.ChangePasswordRequest) error
 }
 
 type authService struct {
@@ -63,4 +64,22 @@ func (s *authService) Register(ctx context.Context, req model.RegisterRequest) e
 	}
 
 	return s.userRepo.Create(ctx, user)
+}
+
+func (s *authService) ChangePassword(ctx context.Context, userID int64, req model.ChangePasswordRequest) error {
+	user, err := s.userRepo.FindByID(ctx, userID)
+	if err != nil {
+		return errors.New("user tidak ditemukan")
+	}
+
+	if !utils.CheckPasswordHash(req.OldPassword, user.PasswordHash) {
+		return errors.New("password lama salah")
+	}
+
+	hash, err := utils.HashPassword(req.NewPassword)
+	if err != nil {
+		return err
+	}
+
+	return s.userRepo.UpdatePassword(ctx, userID, hash)
 }

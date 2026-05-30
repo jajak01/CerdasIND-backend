@@ -47,16 +47,22 @@ func main() {
 	bundleRepo := repository.NewBundleRepository(db)
 	soalRepo := repository.NewSoalRepository(db)
 	historyRepo := repository.NewHistoryRepository(db)
+	studentRepo := repository.NewStudentRepository(db)
+	sessionRepo := repository.NewSessionRepository(db)
 
 	// Services
 	authService := service.NewAuthService(userRepo)
 	participantService := service.NewParticipantService(jenjangRepo, mapelRepo, bundleRepo, soalRepo, historyRepo)
 	adminService := service.NewAdminService(db, bundleRepo, soalRepo, historyRepo, userRepo, jenjangRepo, mapelRepo)
+	studentService := service.NewStudentService(db, studentRepo, userRepo)
+	sessionService := service.NewSessionService(sessionRepo)
 
 	// Handlers
 	authHandler := handler.NewAuthHandler(authService)
 	participantHandler := handler.NewParticipantHandler(participantService)
 	adminHandler := handler.NewAdminHandler(adminService)
+	studentHandler := handler.NewStudentHandler(studentService)
+	sessionHandler := handler.NewSessionHandler(sessionService)
 
 	// Router
 	r := gin.Default()
@@ -89,6 +95,7 @@ func main() {
 		participant := api.Group("/")
 		participant.Use(middleware.AuthMiddleware())
 		{
+			participant.PUT("/auth/change-password", authHandler.ChangePassword)
 			participant.GET("/jenjang", participantHandler.GetJenjang)
 			participant.GET("/jenjang/:id/mapel", participantHandler.GetMapel)
 			participant.GET("/mapel/:id/bundles", participantHandler.GetBundles)
@@ -109,6 +116,23 @@ func main() {
 			admin.GET("/submissions", adminHandler.GetSubmissions)
 			admin.GET("/submissions/:history_id", adminHandler.GetSubmissionDetail)
 			admin.PUT("/submissions/:history_id/grade", adminHandler.GradeSubmission)
+
+			// Student Management
+			admin.GET("/students", studentHandler.GetStudents)
+			admin.GET("/students/:id", studentHandler.GetStudent)
+			admin.POST("/students", studentHandler.CreateStudent)
+			admin.PUT("/students/:id", studentHandler.UpdateStudent)
+			admin.DELETE("/students/:id", studentHandler.DeleteStudent)
+
+			// Session Management
+			admin.GET("/sessions", sessionHandler.GetSessions)
+			admin.GET("/sessions/:id", sessionHandler.GetSession)
+			admin.POST("/sessions", sessionHandler.CreateSession)
+			admin.PUT("/sessions/:id", sessionHandler.UpdateSession)
+			admin.DELETE("/sessions/:id", sessionHandler.DeleteSession)
+
+			// Dashboard
+			admin.GET("/dashboard/stats", sessionHandler.GetDashboardStats)
 		}
 	}
 

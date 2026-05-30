@@ -19,14 +19,20 @@ func AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		parts := strings.Split(authHeader, " ")
-		if len(parts) != 2 || parts[0] != "Bearer" {
+		// Handle both "Bearer <token>" and raw "<token>"
+		tokenString := authHeader
+		if strings.HasPrefix(strings.ToLower(authHeader), "bearer ") {
+			tokenString = strings.TrimSpace(authHeader[7:])
+		} else {
+			tokenString = strings.TrimSpace(authHeader)
+		}
+
+		if tokenString == "" {
 			c.JSON(http.StatusUnauthorized, model.ErrorResponse{Message: "Invalid authorization format"})
 			c.Abort()
 			return
 		}
 
-		tokenString := parts[1]
 		secret := os.Getenv("JWT_SECRET")
 
 		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {

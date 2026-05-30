@@ -32,6 +32,32 @@ definitions:
       waktu_menit:
         type: integer
     type: object
+  model.ChangePasswordRequest:
+    properties:
+      new_password:
+        minLength: 6
+        type: string
+      old_password:
+        type: string
+    required:
+    - new_password
+    - old_password
+    type: object
+  model.DashboardStats:
+    properties:
+      pending_payments:
+        type: number
+      this_month_revenue:
+        type: number
+      this_week_sessions:
+        type: integer
+      today_sessions:
+        type: integer
+      total_omzet:
+        type: number
+      total_students:
+        type: integer
+    type: object
   model.ErrorResponse:
     properties:
       message:
@@ -91,6 +117,16 @@ definitions:
       nama:
         type: string
     type: object
+  model.PaymentStatus:
+    enum:
+    - pending
+    - paid
+    - overdue
+    type: string
+    x-enum-varnames:
+    - PaymentPending
+    - PaymentPaid
+    - PaymentOverdue
   model.PenilaianManual:
     properties:
       skor_diberikan:
@@ -140,6 +176,74 @@ definitions:
       tipe_soal:
         $ref: '#/definitions/model.JenisSoal'
     type: object
+  model.Session:
+    properties:
+      created_at:
+        type: string
+      date:
+        type: string
+      id:
+        type: integer
+      notes:
+        type: string
+      payment_date:
+        type: string
+      payment_status:
+        $ref: '#/definitions/model.PaymentStatus'
+      price:
+        type: number
+      status:
+        $ref: '#/definitions/model.SessionStatus'
+      student_id:
+        type: integer
+      student_name:
+        description: Join result
+        type: string
+      subject:
+        type: string
+      time:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  model.SessionRequest:
+    properties:
+      date:
+        description: 'Format: YYYY-MM-DD'
+        type: string
+      notes:
+        type: string
+      payment_date:
+        description: 'Format: YYYY-MM-DD HH:MM:SS'
+        type: string
+      payment_status:
+        $ref: '#/definitions/model.PaymentStatus'
+      price:
+        type: number
+      status:
+        $ref: '#/definitions/model.SessionStatus'
+      student_id:
+        type: integer
+      subject:
+        type: string
+      time:
+        description: 'Format: HH:MM'
+        type: string
+    required:
+    - date
+    - student_id
+    - time
+    type: object
+  model.SessionStatus:
+    enum:
+    - scheduled
+    - completed
+    - cancelled
+    type: string
+    x-enum-varnames:
+    - SessionScheduled
+    - SessionCompleted
+    - SessionCancelled
   model.SoalPublic:
     properties:
       bobot_nilai:
@@ -165,6 +269,44 @@ definitions:
     - StatusBerlangsung
     - StatusMenungguKoreksi
     - StatusSelesai
+  model.Student:
+    properties:
+      address:
+        type: string
+      contact:
+        type: string
+      created_at:
+        type: string
+      grade:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      school:
+        type: string
+      updated_at:
+        type: string
+      user_id:
+        type: integer
+    type: object
+  model.StudentRequest:
+    properties:
+      address:
+        type: string
+      contact:
+        type: string
+      grade:
+        type: string
+      name:
+        type: string
+      school:
+        type: string
+      user_id:
+        type: integer
+    required:
+    - name
+    type: object
   model.SubmitJawaban:
     properties:
       jawaban_peserta:
@@ -327,6 +469,324 @@ paths:
       summary: Upload bundle and soal from Excel
       tags:
       - admin
+  /admin/dashboard/stats:
+    get:
+      description: Calculates key performance indicators (KPIs) for the dashboard
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.DashboardStats'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get dashboard stats (Admin)
+      tags:
+      - admin
+  /admin/sessions:
+    get:
+      description: Retrieve sessions with support for various filters
+      parameters:
+      - description: Student ID
+        in: query
+        name: studentId
+        type: integer
+      - description: Start Date (YYYY-MM-DD)
+        in: query
+        name: startDate
+        type: string
+      - description: End Date (YYYY-MM-DD)
+        in: query
+        name: endDate
+        type: string
+      - description: Session Status (scheduled, completed, cancelled)
+        in: query
+        name: status
+        type: string
+      - description: Payment Status (pending, paid, overdue)
+        in: query
+        name: paymentStatus
+        type: string
+      - description: Search by student name or contact
+        in: query
+        name: search
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.Session'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get all sessions (Admin)
+      tags:
+      - admin
+    post:
+      consumes:
+      - application/json
+      description: Record a new tutoring session
+      parameters:
+      - description: Session Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.SessionRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/model.WebResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create session (Admin)
+      tags:
+      - admin
+  /admin/sessions/{id}:
+    delete:
+      description: Remove a session record
+      parameters:
+      - description: Session ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.WebResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete session (Admin)
+      tags:
+      - admin
+    get:
+      description: Retrieve a specific session including the associated student details
+      parameters:
+      - description: Session ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Session'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get session by ID (Admin)
+      tags:
+      - admin
+    put:
+      consumes:
+      - application/json
+      description: Update session details. Handles logic for payment_date
+      parameters:
+      - description: Session ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Session Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.SessionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.WebResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update session (Admin)
+      tags:
+      - admin
+  /admin/students:
+    get:
+      description: Retrieve all students from the database, ordered by name
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.Student'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get all students (Admin)
+      tags:
+      - admin
+    post:
+      consumes:
+      - application/json
+      description: Add a new student record
+      parameters:
+      - description: Student Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.StudentRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/model.WebResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create student (Admin)
+      tags:
+      - admin
+  /admin/students/{id}:
+    delete:
+      description: Remove a student and their associated sessions
+      parameters:
+      - description: Student ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.WebResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete student (Admin)
+      tags:
+      - admin
+    get:
+      description: Retrieve a specific student by their unique ID
+      parameters:
+      - description: Student ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Student'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get student by ID (Admin)
+      tags:
+      - admin
+    put:
+      consumes:
+      - application/json
+      description: Modify an existing student's information
+      parameters:
+      - description: Student ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Student Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.StudentRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.WebResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update student (Admin)
+      tags:
+      - admin
   /admin/submissions:
     get:
       description: Retrieve list of student exam submissions, filtered by status
@@ -417,6 +877,38 @@ paths:
       summary: Grade essay questions
       tags:
       - admin
+  /auth/change-password:
+    put:
+      consumes:
+      - application/json
+      description: Update user password after authentication
+      parameters:
+      - description: Change Password Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.ChangePasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.WebResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Change password
+      tags:
+      - auth
   /auth/login:
     post:
       consumes:

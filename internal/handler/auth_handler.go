@@ -72,3 +72,34 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		Message: "Pendaftaran berhasil",
 	})
 }
+
+// ChangePassword godoc
+// @Summary      Change password
+// @Description  Update user password after authentication
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        request  body      model.ChangePasswordRequest  true  "Change Password Request"
+// @Success      200      {object}  model.WebResponse
+// @Failure      400      {object}  model.ErrorResponse
+// @Failure      401      {object}  model.ErrorResponse
+// @Router       /auth/change-password [put]
+func (h *AuthHandler) ChangePassword(c *gin.Context) {
+	userID := c.MustGet("user_id").(int64)
+	var req model.ChangePasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, model.ErrorResponse{Message: err.Error()})
+		return
+	}
+
+	err := h.authService.ChangePassword(c.Request.Context(), userID, req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, model.ErrorResponse{Message: err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, model.WebResponse{
+		Message: "Password berhasil diubah",
+	})
+}

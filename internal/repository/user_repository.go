@@ -10,6 +10,7 @@ type UserRepository interface {
 	Create(ctx context.Context, user *model.User) error
 	FindByEmail(ctx context.Context, email string) (*model.User, error)
 	FindByID(ctx context.Context, id int64) (*model.User, error)
+	UpdatePassword(ctx context.Context, id int64, passwordHash string) error
 }
 
 type userRepository struct {
@@ -43,4 +44,10 @@ func (r *userRepository) FindByID(ctx context.Context, id int64) (*model.User, e
 		return nil, err
 	}
 	return &user, nil
+}
+
+func (r *userRepository) UpdatePassword(ctx context.Context, id int64, passwordHash string) error {
+	query := `UPDATE users SET password_hash = $1 WHERE id = $2`
+	_, err := getRunner(ctx, r.db).ExecContext(ctx, query, passwordHash, id)
+	return err
 }
