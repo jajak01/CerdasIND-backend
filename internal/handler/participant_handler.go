@@ -87,9 +87,24 @@ func (h *ParticipantHandler) GetBundles(c *gin.Context) {
 // @Failure      500      {object}  model.ErrorResponse
 // @Router       /bundles/{id}/soal [get]
 func (h *ParticipantHandler) GetSoal(c *gin.Context) {
-	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
 	userID := c.MustGet("user_id").(int64)
-	res, err := h.participantService.GetSoalByBundle(c.Request.Context(), userID, id)
+	param := c.Param("id")
+	bundleID, err := func() (int64, error) {
+		if id, ok := parseNumericID(param); ok {
+			return id, nil
+		}
+		res, err := h.participantService.GetBundleByPublicID(c.Request.Context(), param)
+		if err != nil {
+			return 0, err
+		}
+		return res.ID, nil
+	}()
+	if err != nil {
+		c.JSON(http.StatusNotFound, model.ErrorResponse{Message: "Bundle tidak ditemukan"})
+		return
+	}
+
+	res, err := h.participantService.GetSoalByBundle(c.Request.Context(), userID, bundleID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, model.ErrorResponse{Message: err.Error()})
 		return
@@ -111,8 +126,22 @@ func (h *ParticipantHandler) GetSoal(c *gin.Context) {
 // @Failure      500      {object}  model.ErrorResponse
 // @Router       /bundles/{id}/submit [post]
 func (h *ParticipantHandler) Submit(c *gin.Context) {
-	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
 	userID := c.MustGet("user_id").(int64)
+	param := c.Param("id")
+	bundleID, err := func() (int64, error) {
+		if id, ok := parseNumericID(param); ok {
+			return id, nil
+		}
+		res, err := h.participantService.GetBundleByPublicID(c.Request.Context(), param)
+		if err != nil {
+			return 0, err
+		}
+		return res.ID, nil
+	}()
+	if err != nil {
+		c.JSON(http.StatusNotFound, model.ErrorResponse{Message: "Bundle tidak ditemukan"})
+		return
+	}
 
 	var req model.SubmitRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -120,7 +149,7 @@ func (h *ParticipantHandler) Submit(c *gin.Context) {
 		return
 	}
 
-	res, err := h.participantService.SubmitUjian(c.Request.Context(), userID, id, req)
+	res, err := h.participantService.SubmitUjian(c.Request.Context(), userID, bundleID, req)
 	if err != nil {
 		if err.Error() == "ujian sudah disubmit" {
 			c.JSON(http.StatusBadRequest, model.ErrorResponse{Message: err.Error()})
@@ -163,11 +192,26 @@ func (h *ParticipantHandler) GetHistory(c *gin.Context) {
 // @Failure      500      {object}  model.ErrorResponse
 // @Router       /bundles/{id}/review [get]
 func (h *ParticipantHandler) GetReview(c *gin.Context) {
-	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
 	userID := c.MustGet("user_id").(int64)
-	res, err := h.participantService.GetReview(c.Request.Context(), userID, id)
+	param := c.Param("id")
+	bundleID, err := func() (int64, error) {
+		if id, ok := parseNumericID(param); ok {
+			return id, nil
+		}
+		res, err := h.participantService.GetBundleByPublicID(c.Request.Context(), param)
+		if err != nil {
+			return 0, err
+		}
+		return res.ID, nil
+	}()
 	if err != nil {
-		log.Printf("Error in GetReview for user %d bundle %d: %v", userID, id, err)
+		c.JSON(http.StatusNotFound, model.ErrorResponse{Message: "Bundle tidak ditemukan"})
+		return
+	}
+
+	res, err := h.participantService.GetReview(c.Request.Context(), userID, bundleID)
+	if err != nil {
+		log.Printf("Error in GetReview for user %d bundle %d: %v", userID, bundleID, err)
 		if err.Error() == "akses ditolak: status masih menunggu koreksi" {
 			c.JSON(http.StatusForbidden, model.ErrorResponse{Message: err.Error()})
 		} else if err.Error() == "not found: history ujian tidak ditemukan" {

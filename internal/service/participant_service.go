@@ -13,6 +13,7 @@ type ParticipantService interface {
 	GetJenjang(ctx context.Context) ([]model.Jenjang, error)
 	GetMapelByJenjang(ctx context.Context, jenjangID int) ([]model.Mapel, error)
 	GetBundlesByMapel(ctx context.Context, mapelID int) ([]model.Bundle, error)
+	GetBundleByPublicID(ctx context.Context, publicID string) (*model.Bundle, error)
 	GetSoalByBundle(ctx context.Context, userID int64, bundleID int64) ([]model.SoalPublic, error)
 	SubmitUjian(ctx context.Context, userID int64, bundleID int64, req model.SubmitRequest) (*model.WebResponse, error)
 	GetHistory(ctx context.Context, userID int64) ([]model.HistoryResponse, error)
@@ -53,6 +54,10 @@ func (s *participantService) GetMapelByJenjang(ctx context.Context, jenjangID in
 
 func (s *participantService) GetBundlesByMapel(ctx context.Context, mapelID int) ([]model.Bundle, error) {
 	return s.bundleRepo.FindByMapelID(ctx, mapelID, true)
+}
+
+func (s *participantService) GetBundleByPublicID(ctx context.Context, publicID string) (*model.Bundle, error) {
+	return s.bundleRepo.FindByPublicID(ctx, publicID)
 }
 
 func (s *participantService) GetSoalByBundle(ctx context.Context, userID int64, bundleID int64) ([]model.SoalPublic, error) {

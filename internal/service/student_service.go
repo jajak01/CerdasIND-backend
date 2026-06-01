@@ -17,7 +17,8 @@ type StudentService interface {
 	UpdateStudent(ctx context.Context, id int64, req model.StudentRequest) error
 	DeleteStudent(ctx context.Context, id int64) error
 	GetStudentByID(ctx context.Context, id int64) (*model.Student, error)
-	GetAllStudents(ctx context.Context) ([]model.Student, error)
+	GetStudentByPublicID(ctx context.Context, publicID string) (*model.Student, error)
+	GetAllStudents(ctx context.Context, onlyActive *bool) ([]model.Student, error)
 }
 
 type studentService struct {
@@ -78,12 +79,16 @@ func (s *studentService) CreateStudent(ctx context.Context, req model.StudentReq
 	}
 
 	student := &model.Student{
-		UserID:  userID,
-		Name:    req.Name,
-		School:  req.School,
-		Grade:   req.Grade,
-		Contact: req.Contact,
-		Address: req.Address,
+		UserID:   userID,
+		Name:     req.Name,
+		School:   req.School,
+		Grade:    req.Grade,
+		Contact:  req.Contact,
+		Address:  req.Address,
+		IsActive: true,
+	}
+	if req.IsActive != nil {
+		student.IsActive = *req.IsActive
 	}
 
 	err = s.studentRepo.Create(txCtx, student)
@@ -105,6 +110,9 @@ func (s *studentService) UpdateStudent(ctx context.Context, id int64, req model.
 	student.Grade = req.Grade
 	student.Contact = req.Contact
 	student.Address = req.Address
+	if req.IsActive != nil {
+		student.IsActive = *req.IsActive
+	}
 
 	return s.studentRepo.Update(ctx, student)
 }
@@ -117,6 +125,10 @@ func (s *studentService) GetStudentByID(ctx context.Context, id int64) (*model.S
 	return s.studentRepo.FindByID(ctx, id)
 }
 
-func (s *studentService) GetAllStudents(ctx context.Context) ([]model.Student, error) {
-	return s.studentRepo.FindAll(ctx)
+func (s *studentService) GetStudentByPublicID(ctx context.Context, publicID string) (*model.Student, error) {
+	return s.studentRepo.FindByPublicID(ctx, publicID)
+}
+
+func (s *studentService) GetAllStudents(ctx context.Context, onlyActive *bool) ([]model.Student, error) {
+	return s.studentRepo.FindAll(ctx, onlyActive)
 }

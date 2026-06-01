@@ -2,7 +2,6 @@ package handler
 
 import (
 	"net/http"
-	"strconv"
 
 	"cerdasind-backend/internal/model"
 	"cerdasind-backend/internal/service"
@@ -27,7 +26,13 @@ func NewStudentHandler(studentService service.StudentService) *StudentHandler {
 // @Failure      500      {object}  model.ErrorResponse
 // @Router       /admin/students [get]
 func (h *StudentHandler) GetStudents(c *gin.Context) {
-	res, err := h.studentService.GetAllStudents(c.Request.Context())
+	var onlyActive *bool
+	if activeParam := c.Query("active"); activeParam != "" {
+		active := activeParam == "true" || activeParam == "1"
+		onlyActive = &active
+	}
+
+	res, err := h.studentService.GetAllStudents(c.Request.Context(), onlyActive)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, model.ErrorResponse{Message: err.Error()})
 		return
@@ -46,8 +51,16 @@ func (h *StudentHandler) GetStudents(c *gin.Context) {
 // @Failure      404      {object}  model.ErrorResponse
 // @Router       /admin/students/{id} [get]
 func (h *StudentHandler) GetStudent(c *gin.Context) {
-	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
-	res, err := h.studentService.GetStudentByID(c.Request.Context(), id)
+	param := c.Param("id")
+	var (
+		res *model.Student
+		err error
+	)
+	if id, ok := parseNumericID(param); ok {
+		res, err = h.studentService.GetStudentByID(c.Request.Context(), id)
+	} else {
+		res, err = h.studentService.GetStudentByPublicID(c.Request.Context(), param)
+	}
 	if err != nil {
 		c.JSON(http.StatusNotFound, model.ErrorResponse{Message: "Siswa tidak ditemukan"})
 		return
@@ -97,14 +110,25 @@ func (h *StudentHandler) CreateStudent(c *gin.Context) {
 // @Failure      500      {object}  model.ErrorResponse
 // @Router       /admin/students/{id} [put]
 func (h *StudentHandler) UpdateStudent(c *gin.Context) {
-	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
 	var req model.StudentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, model.ErrorResponse{Message: err.Error()})
 		return
 	}
 
-	err := h.studentService.UpdateStudent(c.Request.Context(), id, req)
+	param := c.Param("id")
+	student, err := func() (*model.Student, error) {
+		if id, ok := parseNumericID(param); ok {
+			return h.studentService.GetStudentByID(c.Request.Context(), id)
+		}
+		return h.studentService.GetStudentByPublicID(c.Request.Context(), param)
+	}()
+	if err != nil {
+		c.JSON(http.StatusNotFound, model.ErrorResponse{Message: "Siswa tidak ditemukan"})
+		return
+	}
+
+	err = h.studentService.UpdateStudent(c.Request.Context(), student.ID, req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, model.ErrorResponse{Message: err.Error()})
 		return
@@ -124,8 +148,19 @@ func (h *StudentHandler) UpdateStudent(c *gin.Context) {
 // @Failure      500      {object}  model.ErrorResponse
 // @Router       /admin/students/{id} [delete]
 func (h *StudentHandler) DeleteStudent(c *gin.Context) {
-	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
-	err := h.studentService.DeleteStudent(c.Request.Context(), id)
+	param := c.Param("id")
+	student, err := func() (*model.Student, error) {
+		if id, ok := parseNumericID(param); ok {
+			return h.studentService.GetStudentByID(c.Request.Context(), id)
+		}
+		return h.studentService.GetStudentByPublicID(c.Request.Context(), param)
+	}()
+	if err != nil {
+		c.JSON(http.StatusNotFound, model.ErrorResponse{Message: "Siswa tidak ditemukan"})
+		return
+	}
+
+	err = h.studentService.DeleteStudent(c.Request.Context(), student.ID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, model.ErrorResponse{Message: err.Error()})
 		return

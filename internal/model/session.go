@@ -22,6 +22,7 @@ const (
 
 type Session struct {
 	ID            int64         `json:"id" db:"id"`
+	PublicID      string        `json:"public_id" db:"public_id"`
 	StudentID     int64         `json:"student_id" db:"student_id"`
 	StudentName   string        `json:"student_name,omitempty" db:"student_name"` // Join result
 	Date          time.Time     `json:"date" db:"date"`

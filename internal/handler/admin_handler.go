@@ -85,14 +85,33 @@ func (h *AdminHandler) UploadBundle(c *gin.Context) {
 // @Failure      500      {object}  model.ErrorResponse
 // @Router       /admin/bundles/{id}/export [get]
 func (h *AdminHandler) ExportBundle(c *gin.Context) {
-	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
-	res, err := h.adminService.ExportBundle(c.Request.Context(), id)
+	param := c.Param("id")
+	bundleID, bundle, err := func() (int64, *model.Bundle, error) {
+		if id, ok := parseNumericID(param); ok {
+			return id, nil, nil
+		}
+		res, err := h.adminService.GetBundleByPublicID(c.Request.Context(), param)
+		if err != nil {
+			return 0, nil, err
+		}
+		return res.ID, res, nil
+	}()
+	if err != nil {
+		c.JSON(http.StatusNotFound, model.ErrorResponse{Message: "Bundle tidak ditemukan"})
+		return
+	}
+
+	res, err := h.adminService.ExportBundle(c.Request.Context(), bundleID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, model.ErrorResponse{Message: err.Error()})
 		return
 	}
 
-	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=bundle_%d.xlsx", id))
+	if bundle != nil {
+		c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=bundle_%d.xlsx", bundle.ID))
+	} else {
+		c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=bundle_%d.xlsx", bundleID))
+	}
 	c.Data(http.StatusOK, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", res)
 }
 
@@ -110,7 +129,6 @@ func (h *AdminHandler) ExportBundle(c *gin.Context) {
 // @Failure      500      {object}  model.ErrorResponse
 // @Router       /admin/bundles/{id}/update [put]
 func (h *AdminHandler) UpdateBundle(c *gin.Context) {
-	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
 	file, _ := c.FormFile("file")
 
 	f, err := file.Open()
@@ -120,7 +138,23 @@ func (h *AdminHandler) UpdateBundle(c *gin.Context) {
 	}
 	defer f.Close()
 
-	err = h.adminService.UpdateBundleWithExcel(c.Request.Context(), id, f)
+	param := c.Param("id")
+	bundleID, err := func() (int64, error) {
+		if id, ok := parseNumericID(param); ok {
+			return id, nil
+		}
+		res, err := h.adminService.GetBundleByPublicID(c.Request.Context(), param)
+		if err != nil {
+			return 0, err
+		}
+		return res.ID, nil
+	}()
+	if err != nil {
+		c.JSON(http.StatusNotFound, model.ErrorResponse{Message: "Bundle tidak ditemukan"})
+		return
+	}
+
+	err = h.adminService.UpdateBundleWithExcel(c.Request.Context(), bundleID, f)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, model.ErrorResponse{Message: err.Error()})
 		return

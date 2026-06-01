@@ -13,6 +13,7 @@ type SessionService interface {
 	UpdateSession(ctx context.Context, id int64, req model.SessionRequest) error
 	DeleteSession(ctx context.Context, id int64) error
 	GetSessionByID(ctx context.Context, id int64) (*model.Session, error)
+	GetSessionByPublicID(ctx context.Context, publicID string) (*model.Session, error)
 	GetAllSessions(ctx context.Context, filters map[string]interface{}) ([]model.Session, error)
 	GetDashboardStats(ctx context.Context) (*model.DashboardStats, error)
 }
@@ -111,6 +112,10 @@ func (s *sessionService) DeleteSession(ctx context.Context, id int64) error {
 
 func (s *sessionService) GetSessionByID(ctx context.Context, id int64) (*model.Session, error) {
 	return s.sessionRepo.FindByID(ctx, id)
+}
+
+func (s *sessionService) GetSessionByPublicID(ctx context.Context, publicID string) (*model.Session, error) {
+	return s.sessionRepo.FindByPublicID(ctx, publicID)
 }
 
 func (s *sessionService) GetAllSessions(ctx context.Context, filters map[string]interface{}) ([]model.Session, error) {

@@ -38,11 +38,21 @@ func (h *SessionHandler) GetSessions(c *gin.Context) {
 		id, _ := strconv.ParseInt(studentID, 10, 64)
 		filters["student_id"] = id
 	}
-	filters["start_date"] = c.Query("startDate")
-	filters["end_date"] = c.Query("endDate")
-	filters["status"] = c.Query("status")
-	filters["payment_status"] = c.Query("paymentStatus")
-	filters["search"] = c.Query("search")
+	if startDate := c.Query("startDate"); startDate != "" {
+		filters["start_date"] = startDate
+	}
+	if endDate := c.Query("endDate"); endDate != "" {
+		filters["end_date"] = endDate
+	}
+	if status := c.Query("status"); status != "" {
+		filters["status"] = status
+	}
+	if paymentStatus := c.Query("paymentStatus"); paymentStatus != "" {
+		filters["payment_status"] = paymentStatus
+	}
+	if search := c.Query("search"); search != "" {
+		filters["search"] = search
+	}
 
 	res, err := h.sessionService.GetAllSessions(c.Request.Context(), filters)
 	if err != nil {
@@ -63,8 +73,16 @@ func (h *SessionHandler) GetSessions(c *gin.Context) {
 // @Failure      404      {object}  model.ErrorResponse
 // @Router       /admin/sessions/{id} [get]
 func (h *SessionHandler) GetSession(c *gin.Context) {
-	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
-	res, err := h.sessionService.GetSessionByID(c.Request.Context(), id)
+	param := c.Param("id")
+	var (
+		res *model.Session
+		err error
+	)
+	if id, ok := parseNumericID(param); ok {
+		res, err = h.sessionService.GetSessionByID(c.Request.Context(), id)
+	} else {
+		res, err = h.sessionService.GetSessionByPublicID(c.Request.Context(), param)
+	}
 	if err != nil {
 		c.JSON(http.StatusNotFound, model.ErrorResponse{Message: "Sesi tidak ditemukan"})
 		return
@@ -114,14 +132,25 @@ func (h *SessionHandler) CreateSession(c *gin.Context) {
 // @Failure      500      {object}  model.ErrorResponse
 // @Router       /admin/sessions/{id} [put]
 func (h *SessionHandler) UpdateSession(c *gin.Context) {
-	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
 	var req model.SessionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, model.ErrorResponse{Message: err.Error()})
 		return
 	}
 
-	err := h.sessionService.UpdateSession(c.Request.Context(), id, req)
+	param := c.Param("id")
+	session, err := func() (*model.Session, error) {
+		if id, ok := parseNumericID(param); ok {
+			return h.sessionService.GetSessionByID(c.Request.Context(), id)
+		}
+		return h.sessionService.GetSessionByPublicID(c.Request.Context(), param)
+	}()
+	if err != nil {
+		c.JSON(http.StatusNotFound, model.ErrorResponse{Message: "Sesi tidak ditemukan"})
+		return
+	}
+
+	err = h.sessionService.UpdateSession(c.Request.Context(), session.ID, req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, model.ErrorResponse{Message: err.Error()})
 		return
@@ -141,8 +170,19 @@ func (h *SessionHandler) UpdateSession(c *gin.Context) {
 // @Failure      500      {object}  model.ErrorResponse
 // @Router       /admin/sessions/{id} [delete]
 func (h *SessionHandler) DeleteSession(c *gin.Context) {
-	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
-	err := h.sessionService.DeleteSession(c.Request.Context(), id)
+	param := c.Param("id")
+	session, err := func() (*model.Session, error) {
+		if id, ok := parseNumericID(param); ok {
+			return h.sessionService.GetSessionByID(c.Request.Context(), id)
+		}
+		return h.sessionService.GetSessionByPublicID(c.Request.Context(), param)
+	}()
+	if err != nil {
+		c.JSON(http.StatusNotFound, model.ErrorResponse{Message: "Sesi tidak ditemukan"})
+		return
+	}
+
+	err = h.sessionService.DeleteSession(c.Request.Context(), session.ID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, model.ErrorResponse{Message: err.Error()})
 		return

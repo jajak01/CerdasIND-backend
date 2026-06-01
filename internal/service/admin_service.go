@@ -15,6 +15,7 @@ import (
 
 type AdminService interface {
 	GetAllBundles(ctx context.Context) ([]model.Bundle, error)
+	GetBundleByPublicID(ctx context.Context, publicID string) (*model.Bundle, error)
 	UploadBundle(ctx context.Context, fileReader io.Reader, mapelID int, namaBundle string, waktuMenit int, userID int64) error
 	ExportBundle(ctx context.Context, bundleID int64) ([]byte, error)
 	UpdateBundleWithExcel(ctx context.Context, bundleID int64, fileReader io.Reader) error
@@ -55,6 +56,10 @@ func NewAdminService(
 
 func (s *adminService) GetAllBundles(ctx context.Context) ([]model.Bundle, error) {
 	return s.bundleRepo.FindAll(ctx)
+}
+
+func (s *adminService) GetBundleByPublicID(ctx context.Context, publicID string) (*model.Bundle, error) {
+	return s.bundleRepo.FindByPublicID(ctx, publicID)
 }
 
 func (s *adminService) UploadBundle(ctx context.Context, fileReader io.Reader, dummyMapelID int, dummyNamaBundle string, dummyWaktuMenit int, userID int64) error {

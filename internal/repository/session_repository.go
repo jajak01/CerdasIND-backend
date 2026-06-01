@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"cerdasind-backend/internal/model"
+	"cerdasind-backend/pkg/utils"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -15,6 +16,7 @@ type SessionRepository interface {
 	Update(ctx context.Context, session *model.Session) error
 	Delete(ctx context.Context, id int64) error
 	FindByID(ctx context.Context, id int64) (*model.Session, error)
+	FindByPublicID(ctx context.Context, publicID string) (*model.Session, error)
 	FindAll(ctx context.Context, filters map[string]interface{}) ([]model.Session, error)
 	GetStats(ctx context.Context, startDate, endDate time.Time) (*model.DashboardStats, error)
 }
@@ -28,10 +30,18 @@ func NewSessionRepository(db *sqlx.DB) SessionRepository {
 }
 
 func (r *sessionRepository) Create(ctx context.Context, session *model.Session) error {
-	query := `INSERT INTO sessions (student_id, date, time, subject, notes, price, status, payment_status, payment_date) 
-              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id, created_at, updated_at`
+	if session.PublicID == "" {
+		publicID, err := utils.GenerateUUID()
+		if err != nil {
+			return err
+		}
+		session.PublicID = publicID
+	}
+
+	query := `INSERT INTO sessions (public_id, student_id, date, time, subject, notes, price, status, payment_status, payment_date) 
+              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id, created_at, updated_at`
 	return getRunner(ctx, r.db).QueryRowContext(ctx, query,
-		session.StudentID, session.Date, session.Time, session.Subject, session.Notes, session.Price, session.Status, session.PaymentStatus, session.PaymentDate).
+		session.PublicID, session.StudentID, session.Date, session.Time, session.Subject, session.Notes, session.Price, session.Status, session.PaymentStatus, session.PaymentDate).
 		Scan(&session.ID, &session.CreatedAt, &session.UpdatedAt)
 }
 
@@ -51,10 +61,22 @@ func (r *sessionRepository) Delete(ctx context.Context, id int64) error {
 
 func (r *sessionRepository) FindByID(ctx context.Context, id int64) (*model.Session, error) {
 	var session model.Session
-	query := `SELECT s.*, st.name as student_name FROM sessions s 
+	query := `SELECT s.id, s.public_id, s.student_id, st.name as student_name, s.date, s.time::text as time, s.subject, s.notes, s.price, s.status, s.payment_status, s.payment_date, s.created_at, s.updated_at FROM sessions s 
               JOIN students st ON s.student_id = st.id 
               WHERE s.id = $1`
 	err := getRunner(ctx, r.db).GetContext(ctx, &session, query, id)
+	if err != nil {
+		return nil, err
+	}
+	return &session, nil
+}
+
+func (r *sessionRepository) FindByPublicID(ctx context.Context, publicID string) (*model.Session, error) {
+	var session model.Session
+	query := `SELECT s.id, s.public_id, s.student_id, st.name as student_name, s.date, s.time::text as time, s.subject, s.notes, s.price, s.status, s.payment_status, s.payment_date, s.created_at, s.updated_at FROM sessions s 
+              JOIN students st ON s.student_id = st.id 
+              WHERE s.public_id = $1`
+	err := getRunner(ctx, r.db).GetContext(ctx, &session, query, publicID)
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +89,7 @@ func (r *sessionRepository) FindAll(ctx context.Context, filters map[string]inte
 	var conditions []string
 	argIdx := 1
 
-	query := `SELECT s.*, st.name as student_name FROM sessions s 
+	query := `SELECT s.id, s.public_id, s.student_id, st.name as student_name, s.date, s.time::text as time, s.subject, s.notes, s.price, s.status, s.payment_status, s.payment_date, s.created_at, s.updated_at FROM sessions s 
               JOIN students st ON s.student_id = st.id`
 
 	if val, ok := filters["student_id"]; ok && val != nil {

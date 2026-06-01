@@ -4,6 +4,7 @@ import "time"
 
 type Bundle struct {
 	ID          int64     `json:"id" db:"id"`
+	PublicID    string    `json:"public_id" db:"public_id"`
 	MapelID     int       `json:"mapel_id" db:"mapel_id"`
 	NamaBundle  string    `json:"nama_bundle" db:"nama_bundle"`
 	Deskripsi   string    `json:"deskripsi,omitempty" db:"deskripsi"`
