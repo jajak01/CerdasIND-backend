@@ -49,6 +49,7 @@ func main() {
 	historyRepo := repository.NewHistoryRepository(db)
 	studentRepo := repository.NewStudentRepository(db)
 	sessionRepo := repository.NewSessionRepository(db)
+	documentRepo := repository.NewDocumentRepository(db)
 
 	// Services
 	authService := service.NewAuthService(userRepo)
@@ -56,6 +57,7 @@ func main() {
 	adminService := service.NewAdminService(db, bundleRepo, soalRepo, historyRepo, userRepo, jenjangRepo, mapelRepo)
 	studentService := service.NewStudentService(db, studentRepo, userRepo)
 	sessionService := service.NewSessionService(sessionRepo)
+	documentService := service.NewDocumentService(db, documentRepo, sessionRepo, studentRepo)
 
 	// Handlers
 	authHandler := handler.NewAuthHandler(authService)
@@ -63,6 +65,7 @@ func main() {
 	adminHandler := handler.NewAdminHandler(adminService)
 	studentHandler := handler.NewStudentHandler(studentService)
 	sessionHandler := handler.NewSessionHandler(sessionService)
+	documentHandler := handler.NewDocumentHandler(documentService)
 
 	// Router
 	r := gin.Default()
@@ -130,6 +133,14 @@ func main() {
 			admin.POST("/sessions", sessionHandler.CreateSession)
 			admin.PUT("/sessions/:id", sessionHandler.UpdateSession)
 			admin.DELETE("/sessions/:id", sessionHandler.DeleteSession)
+
+			// Documents
+			admin.GET("/invoices", documentHandler.GetInvoices)
+			admin.GET("/invoices/:id", documentHandler.GetInvoice)
+			admin.POST("/invoices", documentHandler.CreateInvoice)
+			admin.GET("/reports", documentHandler.GetReports)
+			admin.GET("/reports/:id", documentHandler.GetReport)
+			admin.POST("/reports", documentHandler.CreateReport)
 
 			// Dashboard
 			admin.GET("/dashboard/stats", sessionHandler.GetDashboardStats)

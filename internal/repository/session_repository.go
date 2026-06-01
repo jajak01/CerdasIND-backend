@@ -17,6 +17,7 @@ type SessionRepository interface {
 	Delete(ctx context.Context, id int64) error
 	FindByID(ctx context.Context, id int64) (*model.Session, error)
 	FindByPublicID(ctx context.Context, publicID string) (*model.Session, error)
+	FindByIDs(ctx context.Context, ids []int64) ([]model.Session, error)
 	FindAll(ctx context.Context, filters map[string]interface{}) ([]model.Session, error)
 	GetStats(ctx context.Context, startDate, endDate time.Time) (*model.DashboardStats, error)
 }
@@ -81,6 +82,26 @@ func (r *sessionRepository) FindByPublicID(ctx context.Context, publicID string)
 		return nil, err
 	}
 	return &session, nil
+}
+
+func (r *sessionRepository) FindByIDs(ctx context.Context, ids []int64) ([]model.Session, error) {
+	sessions := make([]model.Session, 0)
+	if len(ids) == 0 {
+		return sessions, nil
+	}
+
+	query := `SELECT s.id, s.public_id, s.student_id, st.name as student_name, s.date, s.time::text as time, s.subject, s.notes, s.price, s.status, s.payment_status, s.payment_date, s.created_at, s.updated_at FROM sessions s 
+              JOIN students st ON s.student_id = st.id 
+              WHERE s.id IN (?) ORDER BY s.date ASC, s.time ASC`
+
+	inQuery, args, err := sqlx.In(query, ids)
+	if err != nil {
+		return nil, err
+	}
+
+	inQuery = sqlx.Rebind(sqlx.DOLLAR, inQuery)
+	err = getRunner(ctx, r.db).SelectContext(ctx, &sessions, inQuery, args...)
+	return sessions, err
 }
 
 func (r *sessionRepository) FindAll(ctx context.Context, filters map[string]interface{}) ([]model.Session, error) {
