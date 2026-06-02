@@ -32,6 +32,17 @@ func parseDocumentFilters(c *gin.Context) map[string]interface{} {
 	return filters
 }
 
+// CreateInvoice godoc
+// @Summary      Create invoice (Admin)
+// @Description  Generate and save a new invoice document for a student session
+// @Tags         admin
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        request  body      model.StudentDocumentRequest  true  "Invoice Request"
+// @Success      201      {object}  model.WebResponse{data=model.StudentDocument}
+// @Failure      400      {object}  model.ErrorResponse
+// @Router       /admin/invoices [post]
 func (h *DocumentHandler) CreateInvoice(c *gin.Context) {
 	var req model.StudentDocumentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -49,6 +60,17 @@ func (h *DocumentHandler) CreateInvoice(c *gin.Context) {
 	c.JSON(http.StatusCreated, model.WebResponse{Message: "Invoice berhasil disimpan", Data: res})
 }
 
+// CreateReport godoc
+// @Summary      Create report (Admin)
+// @Description  Generate and save a new report document for a student session
+// @Tags         admin
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        request  body      model.StudentDocumentRequest  true  "Report Request"
+// @Success      201      {object}  model.WebResponse{data=model.StudentDocument}
+// @Failure      400      {object}  model.ErrorResponse
+// @Router       /admin/reports [post]
 func (h *DocumentHandler) CreateReport(c *gin.Context) {
 	var req model.StudentDocumentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -66,6 +88,16 @@ func (h *DocumentHandler) CreateReport(c *gin.Context) {
 	c.JSON(http.StatusCreated, model.WebResponse{Message: "Report berhasil disimpan", Data: res})
 }
 
+// GetInvoices godoc
+// @Summary      Get all invoices (Admin)
+// @Description  Retrieve all invoice documents, with optional filters
+// @Tags         admin
+// @Produce      json
+// @Security     BearerAuth
+// @Param        studentId  query     int  false  "Student ID"
+// @Success      200      {array}   model.StudentDocument
+// @Failure      500      {object}  model.ErrorResponse
+// @Router       /admin/invoices [get]
 func (h *DocumentHandler) GetInvoices(c *gin.Context) {
 	res, err := h.documentService.GetInvoices(c.Request.Context(), parseDocumentFilters(c))
 	if err != nil {
@@ -75,6 +107,17 @@ func (h *DocumentHandler) GetInvoices(c *gin.Context) {
 	c.JSON(http.StatusOK, res)
 }
 
+// GetReports godoc
+// @Summary      Get all reports (Admin)
+// @Description  Retrieve all report documents, with optional filters
+// @Tags         admin
+// @Produce      json
+// @Security     BearerAuth
+// @Param        studentId         query     int  false  "Student ID"
+// @Param        linkedInvoiceId  query     int  false  "Linked Invoice ID"
+// @Success      200      {array}   model.StudentDocument
+// @Failure      500      {object}  model.ErrorResponse
+// @Router       /admin/reports [get]
 func (h *DocumentHandler) GetReports(c *gin.Context) {
 	res, err := h.documentService.GetReports(c.Request.Context(), parseDocumentFilters(c))
 	if err != nil {
@@ -84,6 +127,16 @@ func (h *DocumentHandler) GetReports(c *gin.Context) {
 	c.JSON(http.StatusOK, res)
 }
 
+// GetInvoice godoc
+// @Summary      Get invoice by ID (Admin)
+// @Description  Retrieve a specific invoice document by its unique ID
+// @Tags         admin
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id   path      int  true  "Invoice ID"
+// @Success      200      {object}  model.StudentDocument
+// @Failure      404      {object}  model.ErrorResponse
+// @Router       /admin/invoices/{id} [get]
 func (h *DocumentHandler) GetInvoice(c *gin.Context) {
 	param := c.Param("id")
 	var (
@@ -100,6 +153,16 @@ func (h *DocumentHandler) GetInvoice(c *gin.Context) {
 	c.JSON(http.StatusOK, res)
 }
 
+// GetReport godoc
+// @Summary      Get report by ID (Admin)
+// @Description  Retrieve a specific report document by its unique ID
+// @Tags         admin
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id   path      int  true  "Report ID"
+// @Success      200      {object}  model.StudentDocument
+// @Failure      404      {object}  model.ErrorResponse
+// @Router       /admin/reports/{id} [get]
 func (h *DocumentHandler) GetReport(c *gin.Context) {
 	param := c.Param("id")
 	var (

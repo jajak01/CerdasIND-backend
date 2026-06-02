@@ -246,6 +246,286 @@ const docTemplate = `{
                 }
             }
         },
+        "/admin/invoices": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve all invoice documents, with optional filters",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Get all invoices (Admin)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Student ID",
+                        "name": "studentId",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.StudentDocument"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Generate and save a new invoice document for a student session",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Create invoice (Admin)",
+                "parameters": [
+                    {
+                        "description": "Invoice Request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.StudentDocumentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/model.WebResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.StudentDocument"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/model.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/invoices/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve a specific invoice document by its unique ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Get invoice by ID (Admin)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Invoice ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.StudentDocument"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/model.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/reports": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve all report documents, with optional filters",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Get all reports (Admin)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Student ID",
+                        "name": "studentId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Linked Invoice ID",
+                        "name": "linkedInvoiceId",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.StudentDocument"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Generate and save a new report document for a student session",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Create report (Admin)",
+                "parameters": [
+                    {
+                        "description": "Report Request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.StudentDocumentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/model.WebResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.StudentDocument"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/model.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/reports/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve a specific report document by its unique ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Get report by ID (Admin)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Report ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.StudentDocument"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/model.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/admin/sessions": {
             "get": {
                 "security": [
@@ -1350,6 +1630,9 @@ const docTemplate = `{
                 "nama_bundle": {
                     "type": "string"
                 },
+                "public_id": {
+                    "type": "string"
+                },
                 "updated_at": {
                     "type": "string"
                 },
@@ -1598,6 +1881,9 @@ const docTemplate = `{
                 "price": {
                     "type": "number"
                 },
+                "public_id": {
+                    "type": "string"
+                },
                 "status": {
                     "$ref": "#/definitions/model.SessionStatus"
                 },
@@ -1726,7 +2012,13 @@ const docTemplate = `{
                 "id": {
                     "type": "integer"
                 },
+                "is_active": {
+                    "type": "boolean"
+                },
                 "name": {
+                    "type": "string"
+                },
+                "public_id": {
                     "type": "string"
                 },
                 "school": {
@@ -1737,6 +2029,141 @@ const docTemplate = `{
                 },
                 "user_id": {
                     "type": "integer"
+                }
+            }
+        },
+        "model.StudentDocument": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "created_by": {
+                    "type": "integer"
+                },
+                "document_kind": {
+                    "$ref": "#/definitions/model.StudentDocumentKind"
+                },
+                "document_number": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "linked_invoice_id": {
+                    "type": "integer"
+                },
+                "linked_invoice_number": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "period_end": {
+                    "type": "string"
+                },
+                "period_start": {
+                    "type": "string"
+                },
+                "public_id": {
+                    "type": "string"
+                },
+                "session_count": {
+                    "type": "integer"
+                },
+                "sessions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.StudentDocumentSession"
+                    }
+                },
+                "student_id": {
+                    "type": "integer"
+                },
+                "student_name": {
+                    "type": "string"
+                },
+                "summary": {
+                    "type": "string"
+                },
+                "total_amount": {
+                    "type": "number"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.StudentDocumentKind": {
+            "type": "string",
+            "enum": [
+                "invoice",
+                "report"
+            ],
+            "x-enum-varnames": [
+                "StudentDocumentInvoice",
+                "StudentDocumentReport"
+            ]
+        },
+        "model.StudentDocumentRequest": {
+            "type": "object",
+            "required": [
+                "session_ids",
+                "student_id"
+            ],
+            "properties": {
+                "linked_invoice_id": {
+                    "type": "integer"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "session_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "student_id": {
+                    "type": "integer"
+                },
+                "summary": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.StudentDocumentSession": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "document_id": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "note": {
+                    "type": "string"
+                },
+                "payment_status": {
+                    "type": "string"
+                },
+                "price": {
+                    "type": "number"
+                },
+                "session_date": {
+                    "type": "string"
+                },
+                "session_id": {
+                    "type": "integer"
+                },
+                "session_time": {
+                    "type": "string"
+                },
+                "subject": {
+                    "type": "string"
                 }
             }
         },
@@ -1754,6 +2181,9 @@ const docTemplate = `{
                 },
                 "grade": {
                     "type": "string"
+                },
+                "is_active": {
+                    "type": "boolean"
                 },
                 "name": {
                     "type": "string"

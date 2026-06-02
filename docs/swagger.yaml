@@ -27,6 +27,8 @@ definitions:
         type: integer
       nama_bundle:
         type: string
+      public_id:
+        type: string
       updated_at:
         type: string
       waktu_menit:
@@ -192,6 +194,8 @@ definitions:
         $ref: '#/definitions/model.PaymentStatus'
       price:
         type: number
+      public_id:
+        type: string
       status:
         $ref: '#/definitions/model.SessionStatus'
       student_id:
@@ -281,7 +285,11 @@ definitions:
         type: string
       id:
         type: integer
+      is_active:
+        type: boolean
       name:
+        type: string
+      public_id:
         type: string
       school:
         type: string
@@ -289,6 +297,96 @@ definitions:
         type: string
       user_id:
         type: integer
+    type: object
+  model.StudentDocument:
+    properties:
+      created_at:
+        type: string
+      created_by:
+        type: integer
+      document_kind:
+        $ref: '#/definitions/model.StudentDocumentKind'
+      document_number:
+        type: string
+      id:
+        type: integer
+      linked_invoice_id:
+        type: integer
+      linked_invoice_number:
+        type: string
+      message:
+        type: string
+      period_end:
+        type: string
+      period_start:
+        type: string
+      public_id:
+        type: string
+      session_count:
+        type: integer
+      sessions:
+        items:
+          $ref: '#/definitions/model.StudentDocumentSession'
+        type: array
+      student_id:
+        type: integer
+      student_name:
+        type: string
+      summary:
+        type: string
+      total_amount:
+        type: number
+      updated_at:
+        type: string
+    type: object
+  model.StudentDocumentKind:
+    enum:
+    - invoice
+    - report
+    type: string
+    x-enum-varnames:
+    - StudentDocumentInvoice
+    - StudentDocumentReport
+  model.StudentDocumentRequest:
+    properties:
+      linked_invoice_id:
+        type: integer
+      message:
+        type: string
+      session_ids:
+        items:
+          type: integer
+        type: array
+      student_id:
+        type: integer
+      summary:
+        type: string
+    required:
+    - session_ids
+    - student_id
+    type: object
+  model.StudentDocumentSession:
+    properties:
+      created_at:
+        type: string
+      document_id:
+        type: integer
+      id:
+        type: integer
+      note:
+        type: string
+      payment_status:
+        type: string
+      price:
+        type: number
+      session_date:
+        type: string
+      session_id:
+        type: integer
+      session_time:
+        type: string
+      subject:
+        type: string
     type: object
   model.StudentRequest:
     properties:
@@ -298,6 +396,8 @@ definitions:
         type: string
       grade:
         type: string
+      is_active:
+        type: boolean
       name:
         type: string
       school:
@@ -486,6 +586,176 @@ paths:
       security:
       - BearerAuth: []
       summary: Get dashboard stats (Admin)
+      tags:
+      - admin
+  /admin/invoices:
+    get:
+      description: Retrieve all invoice documents, with optional filters
+      parameters:
+      - description: Student ID
+        in: query
+        name: studentId
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.StudentDocument'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get all invoices (Admin)
+      tags:
+      - admin
+    post:
+      consumes:
+      - application/json
+      description: Generate and save a new invoice document for a student session
+      parameters:
+      - description: Invoice Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.StudentDocumentRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/model.WebResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.StudentDocument'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create invoice (Admin)
+      tags:
+      - admin
+  /admin/invoices/{id}:
+    get:
+      description: Retrieve a specific invoice document by its unique ID
+      parameters:
+      - description: Invoice ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.StudentDocument'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get invoice by ID (Admin)
+      tags:
+      - admin
+  /admin/reports:
+    get:
+      description: Retrieve all report documents, with optional filters
+      parameters:
+      - description: Student ID
+        in: query
+        name: studentId
+        type: integer
+      - description: Linked Invoice ID
+        in: query
+        name: linkedInvoiceId
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.StudentDocument'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get all reports (Admin)
+      tags:
+      - admin
+    post:
+      consumes:
+      - application/json
+      description: Generate and save a new report document for a student session
+      parameters:
+      - description: Report Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.StudentDocumentRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/model.WebResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.StudentDocument'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create report (Admin)
+      tags:
+      - admin
+  /admin/reports/{id}:
+    get:
+      description: Retrieve a specific report document by its unique ID
+      parameters:
+      - description: Report ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.StudentDocument'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get report by ID (Admin)
       tags:
       - admin
   /admin/sessions:
